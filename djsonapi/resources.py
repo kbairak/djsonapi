@@ -1,4 +1,3 @@
-import functools
 import logging
 import re
 from collections.abc import Mapping, Sequence
@@ -107,9 +106,9 @@ class Resource:
         try:
             inner_method, outer_method = mappings[request.method]
         except KeyError:
-            raise cls._get_unsupported_verb_error(request)
+            cls._raise_unsupported_verb_error(request)
         if not hasattr(cls, inner_method):
-            raise cls._get_unsupported_verb_error(request)
+            cls._raise_unsupported_verb_error(request)
 
         method = getattr(cls, outer_method)
         try:
@@ -120,6 +119,8 @@ class Resource:
     @classmethod
     def _get_one_view(cls, request, obj_id):
         result = cls.get_one(request, obj_id)
+        if isinstance(result, HttpResponse):
+            return result
         result = cls._process_one(request, result)
         result.setdefault('links', {}).setdefault('self',
                                                   request.get_full_path())
@@ -129,6 +130,8 @@ class Resource:
     def _edit_one_view(cls, request, obj_id):
         with atomic():
             result = cls.edit_one(request, obj_id)
+            if isinstance(result, HttpResponse):
+                return result
             result = cls._process_one(request, result)
             result.setdefault('links', {}).setdefault('self',
                                                       request.get_full_path())
@@ -136,7 +139,9 @@ class Resource:
 
     @classmethod
     def _delete_one_view(cls, request, obj_id):
-        cls.delete_one(request, obj_id)
+        result = cls.delete_one(request, obj_id)
+        if isinstance(result, HttpResponse):
+            return result
         return HttpResponse('', status=204)
 
     @classmethod
@@ -147,9 +152,9 @@ class Resource:
         try:
             inner_method, outer_method = mappings[request.method]
         except KeyError:
-            raise cls._get_unsupported_verb_error(request)
+            cls._raise_unsupported_verb_error(request)
         if not hasattr(cls, inner_method):
-            raise cls._get_unsupported_verb_error(request)
+            cls._raise_unsupported_verb_error(request)
 
         method = getattr(cls, outer_method)
         try:
@@ -161,6 +166,8 @@ class Resource:
     def _create_one_view(cls, request):
         with atomic():
             result = cls.create_one(request)
+            if isinstance(result, HttpResponse):
+                return result
             result = cls._process_one(request, result)
             try:
                 self_link = reverse(f"{cls.TYPE}_object",
@@ -179,6 +186,8 @@ class Resource:
     @classmethod
     def _get_many_view(cls, request):
         result = cls.get_many(request)
+        if isinstance(result, HttpResponse):
+            return result
         if not isinstance(result, Mapping):
             result = {'data': result}
 
@@ -201,7 +210,7 @@ class Resource:
     @csrf_exempt
     def _change_view(cls, request, relationship_name, obj_id):
         if request.method != "PATCH":
-            raise cls._get_unsupported_verb_error(request)
+            cls._raise_unsupported_verb_error(request)
         method = getattr(cls, f"change_{relationship_name}")
         try:
             method(request, obj_id)
@@ -216,14 +225,16 @@ class Resource:
         try:
             prefix = mapping[request.method]
         except KeyError:
-            raise cls._get_unsupported_verb_error(request)
+            cls._raise_unsupported_verb_error(request)
         if not hasattr(cls, f"{prefix}_{relationship_name}"):
-            raise cls._get_unsupported_verb_error(request)
+            cls._raise_unsupported_verb_error(request)
 
         method = getattr(cls, f"{prefix}_{relationship_name}")
         try:
             with atomic():
-                method(request, obj_id)
+                result = method(request, obj_id)
+                if isinstance(result, HttpResponse):
+                    return result
         except Exception as exc:
             return cls.exception_handler(exc)
         return HttpResponse('', status=204)
@@ -231,11 +242,13 @@ class Resource:
     @classmethod
     def _get_related_view(cls, request, relationship_name, obj_id):
         if request.method != "GET":
-            raise cls._get_unsupported_verb_error(request)
+            cls._raise_unsupported_verb_error(request)
 
         method = getattr(cls, f"get_{relationship_name}")
         try:
             result = method(request, obj_id)
+            if isinstance(result, HttpResponse):
+                return result
         except Exception as exc:
             return cls.exception_handler(exc)
 
@@ -280,7 +293,9 @@ class Resource:
 
     @classmethod
     def _process_one(cls, request, result):
-        if not isinstance(result, Mapping):
+        try:
+            result['data']
+        except TypeError:
             result = {'data': result}
 
         # data
@@ -307,9 +322,13 @@ class Resource:
         for key, value in result.items():
             if key == "self":
                 continue
-            if isinstance(value, Mapping):
-                params = request.GET.copy()
-                for inner_key, inner_value in value.items():
+            params = request.GET.copy()
+            try:
+                items = value.items()
+            except AttributeError:
+                pass
+            else:
+                for inner_key, inner_value in items:
                     params[inner_key] = inner_value
                 result[key] = (request.path +
                                '?' +
@@ -425,9 +444,9 @@ class Resource:
         return result
 
     @classmethod
-    def _get_unsupported_verb_error(cls, request):
-        return NotFound(f"Endpoint '{request.path}' does not support method "
-                        f"{request.method}")
+    def _raise_unsupported_verb_error(cls, request):
+        raise NotFound(f"Endpoint '{request.path}' does not support method "
+                       f"{request.method}")
 
     @classmethod
     def _limit_fields(cls, request, obj):
@@ -473,7 +492,9 @@ class Resource:
         request.GET = params
         method = getattr(other_resource, method_name)
         result = method(request)
-        if not isinstance(result, Mapping):
+        try:
+            result['data']
+        except TypeError:
             result = {'data': result}
 
         try:

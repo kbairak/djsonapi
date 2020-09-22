@@ -158,6 +158,9 @@ depending on which classmethod you provide to the `Resource` subclass:
 
 ## PostProcessing of return values
 
+If any of the special classmethods return a `django.http.HttpResponse` object,
+djsonapi will return it as-is. Otherwise:
+
 ### `get_one` and `edit_one`
 
 If your `get_one` or `edit_one` classmethods return anything other than a
