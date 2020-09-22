@@ -6,3 +6,6 @@ debugtest:
 
 test:
 	pytest --cov=. --cov-report=term-missing
+
+runserver:
+	python manage.py runserver

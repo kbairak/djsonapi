@@ -150,12 +150,19 @@ def test_get_one_article_with_include():
             },
             'links': {'self': f"/articles/{article.id}"},
         },
-        'included': [{'type': "users",
-                      'id': str(author.id),
-                      'attributes': {'username': author.username,
-                                     'first_name': author.first_name,
-                                     'last_name': author.last_name},
-                      'links': {'self': f"/users/{author.id}"}}],
+        'included': [{
+            'type': "users",
+            'id': str(author.id),
+            'attributes': {'username': author.username,
+                           'first_name': author.first_name,
+                           'last_name': author.last_name},
+            'relationships': {
+                'articles': {
+                    'links': {'related': f"/users/{author.id}/articles"},
+                },
+            },
+            'links': {'self': f"/users/{author.id}"},
+        }],
         'links': {'self': f"/articles/{article.id}?include=author"},
     }
 
@@ -203,12 +210,19 @@ def test_edit_one():
             },
             'links': {'self': f"/articles/{article.id}"},
         },
-        'included': [{'type': "users",
-                      'id': str(author2.id),
-                      'attributes': {'username': author2.username,
-                                     'first_name': author2.first_name,
-                                     'last_name': author2.last_name},
-                      'links': {'self': f"/users/{author2.id}"}}],
+        'included': [{
+            'type': "users",
+            'id': str(author2.id),
+            'attributes': {'username': author2.username,
+                           'first_name': author2.first_name,
+                           'last_name': author2.last_name},
+            'relationships': {
+                'articles': {
+                    'links': {'related': f"/users/{author2.id}/articles"},
+                },
+            },
+            'links': {'self': f"/users/{author2.id}"},
+        }],
         'links': {'self': f"/articles/{article.id}"},
     }
     assert (list(Article.objects.
@@ -277,12 +291,19 @@ def test_create_one_article():
             },
             'links': {'self': f"/articles/{article.id}"},
         },
-        'included': [{'type': "users",
-                      'id': str(author.id),
-                      'attributes': {'username': author.username,
-                                     'first_name': author.first_name,
-                                     'last_name': author.last_name},
-                      'links': {'self': f"/users/{author.id}"}}],
+        'included': [{
+            'type': "users",
+            'id': str(author.id),
+            'attributes': {'username': author.username,
+                           'first_name': author.first_name,
+                           'last_name': author.last_name},
+            'relationships': {
+                'articles': {
+                    'links': {'related': f"/users/{author.id}/articles"},
+                },
+            },
+            'links': {'self': f"/users/{author.id}"},
+        }],
         'links': {'self': f"/articles/{article.id}"},
     }
 
@@ -670,18 +691,34 @@ def test_get_many_articles_include_author():
                 'links': {'self': f"/articles/{article.id}"}
             }
             for article in articles2]),
-        'included': [{'type': "users",
-                      'id': str(author1.id),
-                      'attributes': {'username': author1.username,
-                                     'first_name': author1.first_name,
-                                     'last_name': author1.last_name},
-                      'links': {'self': f"/users/{author1.id}"}},
-                     {'type': "users",
-                      'id': str(author2.id),
-                      'attributes': {'username': author2.username,
-                                     'first_name': author2.first_name,
-                                     'last_name': author2.last_name},
-                      'links': {'self': f"/users/{author2.id}"}}],
+        'included': [
+            {
+                'type': "users",
+                'id': str(author1.id),
+                'attributes': {'username': author1.username,
+                               'first_name': author1.first_name,
+                               'last_name': author1.last_name},
+                'relationships': {
+                    'articles': {
+                        'links': {'related': f"/users/{author1.id}/articles"},
+                    },
+                },
+                'links': {'self': f"/users/{author1.id}"},
+            },
+            {
+                'type': "users",
+                'id': str(author2.id),
+                'attributes': {'username': author2.username,
+                               'first_name': author2.first_name,
+                               'last_name': author2.last_name},
+                'relationships': {
+                    'articles': {
+                        'links': {'related': f"/users/{author2.id}/articles"},
+                    },
+                },
+                'links': {'self': f"/users/{author2.id}"},
+            },
+        ],
         'links': {'self': "/articles?include=author"},
     }
 
@@ -693,12 +730,19 @@ def test_get_author():
     response = client.get(f"/articles/{article.id}/author")
     assert response.status_code == 200
     assert response.json() == {
-        'data': {'type': "users",
-                 'id': str(author.id),
-                 'attributes': {'username': author.username,
-                                'first_name': author.first_name,
-                                'last_name': author.last_name},
-                 'links': {'self': f"/users/{author.id}"}},
+        'data': {
+            'type': "users",
+            'id': str(author.id),
+            'attributes': {'username': author.username,
+                           'first_name': author.first_name,
+                           'last_name': author.last_name},
+            'relationships': {
+                'articles': {
+                    'links': {'related': f"/users/{author.id}/articles"},
+                },
+            },
+            'links': {'self': f"/users/{author.id}"},
+        },
         'links': {'self': f"/articles/{article.id}/author"},
     }
 
@@ -1007,12 +1051,19 @@ def test_map_to_method_with_include():
             }
             for article in articles
         ],
-        'included': [{'type': "users",
-                      'id': str(author.id),
-                      'attributes': {'username': author.username,
-                                     'first_name': author.first_name,
-                                     'last_name': author.last_name},
-                      'links': {'self': f"/users/{author.id}"}}],
+        'included': [{
+            'type': "users",
+            'id': str(author.id),
+            'attributes': {'username': author.username,
+                           'first_name': author.first_name,
+                           'last_name': author.last_name},
+            'relationships': {
+                'articles': {
+                    'links': {'related': f"/users/{author.id}/articles"},
+                },
+            },
+            'links': {'self': f"/users/{author.id}"},
+        }],
         'links': {'self': f"/users/{author.id}/articles?include=author"}
     }
 

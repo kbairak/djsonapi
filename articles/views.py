@@ -357,7 +357,8 @@ class User(djsonapi.Resource):
         return {'id': str(obj.id),
                 'attributes': {'username': obj.username,
                                'first_name': obj.first_name,
-                               'last_name': obj.last_name}}
+                               'last_name': obj.last_name},
+                'relationships': {'articles': {}}}
 
     @classmethod
     def _raise_not_found(cls, obj_id):
