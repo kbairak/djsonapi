@@ -57,7 +57,7 @@ class Resource:
                           name=f"{cls.TYPE}_list"))
         plural_relationships = set()
         for attr in dir(cls):
-            match = re.search(r'^change_([^_]+)$', attr)
+            match = re.search(r'^change_(.+)$', attr)
             if match:
                 relationship_name = match.groups()[0]
                 result.append(path(
@@ -68,7 +68,7 @@ class Resource:
                     name=f"{cls.TYPE}_{relationship_name}_relationship"
                 ))
 
-            match = re.search(r'^(add|remove|reset)_([^_]+)$', attr)
+            match = re.search(r'^(add|remove|reset)_(.+)$', attr)
             if match:
                 _, relationship_name = match.groups()
 
@@ -84,7 +84,7 @@ class Resource:
                     name=f"{cls.TYPE}_{relationship_name}_plural_relationship",
                 ))
 
-            match = re.search(r'^get_([^_]+)$', attr)
+            match = re.search(r'^get_(.+)$', attr)
             if match:
                 relationship_name = match.groups()[0]
                 if relationship_name in ('one', 'many'):
