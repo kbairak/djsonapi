@@ -17,9 +17,7 @@ class Article(models.Model):
     slug = models.SlugField(unique=True)
     title = models.TextField()
     content = models.TextField()
-    author = models.ForeignKey(User,
-                               on_delete=models.CASCADE,
-                               related_name="articles")
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="articles")
     categories = models.ManyToManyField(Category, related_name="articles")
 
     def __str__(self):

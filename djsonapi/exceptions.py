@@ -2,22 +2,20 @@ from functools import reduce
 
 
 def class_name_to_title(text):
-    """ 'NotFound' => 'Not found' """
+    """'NotFound' => 'Not found'"""
 
-    result = ''.join((f" {char.lower()}" if char.isupper() else char
-                      for char in text))
-    if result.startswith(' '):  # pragma: no cover
+    result = "".join((f" {char.lower()}" if char.isupper() else char for char in text))
+    if result.startswith(" "):  # pragma: no cover
         result = result[1:]
-    result = ''.join((result[:1].upper(), result[1:]))
+    result = "".join((result[:1].upper(), result[1:]))
     return result
 
 
 def class_name_to_code(text):
-    """ 'NotFound' => 'not_found' """
+    """'NotFound' => 'not_found'"""
 
-    result = ''.join((f"_{char.lower()}" if char.isupper() else char
-                      for char in text))
-    if result.startswith('_'):  # pragma: no cover
+    result = "".join((f"_{char.lower()}" if char.isupper() else char for char in text))
+    if result.startswith("_"):  # pragma: no cover
         result = result[1:]
     return result
 
@@ -61,10 +59,13 @@ class DjsonApiExceptionSingle(DjsonApiException):
         title, detail, source = self.args
 
         result = {
-            'status': status, 'code': code, 'title': title, 'detail': detail,
+            "status": status,
+            "code": code,
+            "title": title,
+            "detail": detail,
         }
         if source is not None:
-            result['source'] = source
+            result["source"] = source
 
         return [result]
 
@@ -72,12 +73,15 @@ class DjsonApiExceptionSingle(DjsonApiException):
     def status(self):
         return int(self.STATUS)
 
-    title = property(fget=lambda self: self.args[0],
-                     fset=lambda self, value: self._set(0, value))
-    detail = property(fget=lambda self: self.args[1],
-                      fset=lambda self, value: self._set(1, value))
-    source = property(fget=lambda self: self.args[2],
-                      fset=lambda self, value: self._set(2, value))
+    title = property(
+        fget=lambda self: self.args[0], fset=lambda self, value: self._set(0, value)
+    )
+    detail = property(
+        fget=lambda self: self.args[1], fset=lambda self, value: self._set(1, value)
+    )
+    source = property(
+        fget=lambda self: self.args[2], fset=lambda self, value: self._set(2, value)
+    )
 
     def _set(self, pos, value):
         args = list(self.args)
@@ -86,37 +90,37 @@ class DjsonApiExceptionSingle(DjsonApiException):
 
 
 class DjsonApiExceptionMulti(DjsonApiException):
-    """ Exception class to group several jsonapi exceptions together. Supports
-        `render()` and `status` like the single exceptions.
+    """Exception class to group several jsonapi exceptions together. Supports
+    `render()` and `status` like the single exceptions.
 
-        Usage:
+    Usage:
 
-            >>> try:
-            ...     raise DjsonApiExceptionMulti(
-            ...         NotFound("Happiness not found"),
-            ...         Conflict("I am conflicted"),
-            ...     )
-            ... except JsonApiError as exc:
-            ...     print(exc.render())
-            <<< [{'status': "404", 'code': "not_found",
-            ...   'title': "Object not found",
-            ...   'detail': "Happiness not found"},
-            ...  {'status': "409", 'code': "conflict",
-            ...   'title': "Conflict", 'detail': "I am conflicted"}]
+        >>> try:
+        ...     raise DjsonApiExceptionMulti(
+        ...         NotFound("Happiness not found"),
+        ...         Conflict("I am conflicted"),
+        ...     )
+        ... except JsonApiError as exc:
+        ...     print(exc.render())
+        <<< [{'status': "404", 'code': "not_found",
+        ...   'title': "Object not found",
+        ...   'detail': "Happiness not found"},
+        ...  {'status': "409", 'code': "conflict",
+        ...   'title': "Conflict", 'detail': "I am conflicted"}]
 
-        Most likely you will use it like this in views:
+    Most likely you will use it like this in views:
 
-            >>> errors = []
-            >>> try:
-            ...     do_something()
-            ... except JsonApiError as exc:
-            ...     errors.append(exc)
-            >>> try:
-            ...     do_something_else()
-            ... except JsonApiError as exc:
-            ...     errors.append(exc)
-            >>> if errors:
-            ...     raise DjsonApiExceptionMulti(*errors)
+        >>> errors = []
+        >>> try:
+        ...     do_something()
+        ... except JsonApiError as exc:
+        ...     errors.append(exc)
+        >>> try:
+        ...     do_something_else()
+        ... except JsonApiError as exc:
+        ...     errors.append(exc)
+        >>> if errors:
+        ...     raise DjsonApiExceptionMulti(*errors)
     """
 
     def render(self):
@@ -124,13 +128,13 @@ class DjsonApiExceptionMulti(DjsonApiException):
 
     @property
     def status(self):
-        """ Returns the most generally applicable HTTP error code. eg,
+        """Returns the most generally applicable HTTP error code. eg,
 
-            404, 404 => 404
-            400, 401 => 400
-            401, 404 => 400
-            401, 500 => 500
-            401, 502 => 500
+        404, 404 => 404
+        400, 401 => 400
+        401, 404 => 400
+        401, 500 => 500
+        401, 502 => 500
         """
 
         statuses = {exc.status for exc in self.args}
