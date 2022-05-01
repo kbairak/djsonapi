@@ -186,8 +186,10 @@ class Resource:
                 return result
             result = cls._process_one(request, result)
             try:
-                self_link = reverse(
-                    f"{cls.TYPE}_object", kwargs={"obj_id": result["data"]["id"]}
+                self_link = cls._preprocess_link(
+                    reverse(
+                        f"{cls.TYPE}_object", kwargs={"obj_id": result["data"]["id"]}
+                    )
                 )
             except NoReverseMatch:
                 self_link = None
@@ -356,7 +358,9 @@ class Resource:
         # type, 'self' link
         result.setdefault("type", cls.TYPE)
         try:
-            self_link = reverse(f"{cls.TYPE}_object", kwargs={"obj_id": result["id"]})
+            self_link = cls._preprocess_link(
+                reverse(f"{cls.TYPE}_object", kwargs={"obj_id": result["id"]})
+            )
         except NoReverseMatch:
             pass
         else:
@@ -384,16 +388,18 @@ class Resource:
 
                 # 'related' link
                 try:
-                    url = reverse(
-                        f"{cls.TYPE}_get_{key}", kwargs={"obj_id": result["id"]}
+                    url = cls._preprocess_link(
+                        reverse(
+                            f"{cls.TYPE}_get_{key}", kwargs={"obj_id": result["id"]}
+                        )
                     )
                 except NoReverseMatch:
                     pass
                 else:
                     relationship.setdefault("links", {}).setdefault("related", url)
                 try:
-                    url = reverse(
-                        f"{data['type']}_object", kwargs={"obj_id": data["id"]}
+                    url = cls._preprocess_link(
+                        reverse(f"{data['type']}_object", kwargs={"obj_id": data["id"]})
                     )
                 except NoReverseMatch:
                     pass
@@ -401,9 +407,11 @@ class Resource:
                     relationship.setdefault("links", {}).setdefault("related", url)
                 # 'self' link
                 try:
-                    url = reverse(
-                        f"{cls.TYPE}_{key}_relationship",
-                        kwargs={"obj_id": result["id"]},
+                    url = cls._preprocess_link(
+                        reverse(
+                            f"{cls.TYPE}_{key}_relationship",
+                            kwargs={"obj_id": result["id"]},
+                        )
                     )
                 except NoReverseMatch:
                     pass
@@ -426,9 +434,11 @@ class Resource:
 
                 # 'self' link
                 try:
-                    url = reverse(
-                        f"{cls.TYPE}_{key}_plural_relationship",
-                        kwargs={"obj_id": result["id"]},
+                    url = cls._preprocess_link(
+                        reverse(
+                            f"{cls.TYPE}_{key}_plural_relationship",
+                            kwargs={"obj_id": result["id"]},
+                        )
                     )
                 except NoReverseMatch:
                     pass
@@ -437,8 +447,10 @@ class Resource:
 
                 # 'related' link
                 try:
-                    url = reverse(
-                        f"{cls.TYPE}_get_{key}", kwargs={"obj_id": result["id"]}
+                    url = cls._preprocess_link(
+                        reverse(
+                            f"{cls.TYPE}_get_{key}", kwargs={"obj_id": result["id"]}
+                        )
                     )
                 except NoReverseMatch:
                     pass
@@ -515,3 +527,7 @@ class Resource:
             result["data"] = other_resource(result["data"])
         request.GET = old_get
         return result
+
+    @classmethod
+    def _preprocess_link(cls, link):
+        return link
