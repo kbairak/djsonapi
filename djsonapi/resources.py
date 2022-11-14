@@ -26,12 +26,13 @@ def JsonApiResponse(*args, **kwargs):
 
 
 class Resource:
+    TYPE: str
+
     def __init__(self, obj):
         self.obj = obj
 
     def __hash__(self):
-        if self.obj:
-            return hash(self.obj)
+        return hash((self.__class__, self.obj))
 
     def __eq__(self, other):
         try:
@@ -70,8 +71,7 @@ class Resource:
                 relationship_name = match.groups()[0]
                 result.append(
                     path(
-                        f"{cls.TYPE}/<str:obj_id>/relationships/"
-                        f"{relationship_name}",
+                        f"{cls.TYPE}/<str:obj_id>/relationships/{relationship_name}",
                         cls._change_view,
                         kwargs={"relationship_name": relationship_name},
                         name=f"{cls.TYPE}_{relationship_name}_relationship",
@@ -88,8 +88,7 @@ class Resource:
 
                 result.append(
                     path(
-                        f"{cls.TYPE}/<str:obj_id>/relationships/"
-                        f"{relationship_name}",
+                        f"{cls.TYPE}/<str:obj_id>/relationships/{relationship_name}",
                         cls._change_plural_view,
                         kwargs={"relationship_name": relationship_name},
                         name=f"{cls.TYPE}_{relationship_name}_plural_relationship",
