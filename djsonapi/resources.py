@@ -41,6 +41,10 @@ class Resource:
             return super().__eq__(other)
 
     @classmethod
+    def middleware(cls, get_response):
+        return get_response
+
+    @classmethod
     def exception_handler(cls, exc):
         if isinstance(exc, DjsonApiException):
             return JsonApiResponse({"errors": exc.render()}, status=exc.status)
@@ -127,7 +131,7 @@ class Resource:
 
         method = getattr(cls, outer_method)
         try:
-            return method(request, obj_id)
+            return cls.middleware(method)(request, obj_id)
         except Exception as exc:
             return cls.exception_handler(exc)
 
@@ -173,7 +177,7 @@ class Resource:
 
         method = getattr(cls, outer_method)
         try:
-            return method(request)
+            return cls.middleware(method)(request)
         except Exception as exc:
             return cls.exception_handler(exc)
 
@@ -228,7 +232,7 @@ class Resource:
             cls._raise_unsupported_verb_error(request)
         method = getattr(cls, f"change_{relationship_name}")
         try:
-            method(request, obj_id)
+            cls.middleware(method)(request, obj_id)
         except Exception as exc:
             return cls.exception_handler(exc)
         return HttpResponse("", status=204)
@@ -247,7 +251,7 @@ class Resource:
         method = getattr(cls, f"{prefix}_{relationship_name}")
         try:
             with atomic():
-                result = method(request, obj_id)
+                result = cls.middleware(method)(request, obj_id)
                 if isinstance(result, HttpResponse):
                     return result
         except Exception as exc:
@@ -261,7 +265,7 @@ class Resource:
 
         method = getattr(cls, f"get_{relationship_name}")
         try:
-            result = method(request, obj_id)
+            result = cls.middleware(method)(request, obj_id)
             if isinstance(result, HttpResponse):
                 return result
         except Exception as exc:

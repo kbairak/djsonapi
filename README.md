@@ -562,6 +562,118 @@ wrap a User ID with `User` in `serialize`. That is intentional)_
 }
 ```
 
+## Middleware
+
+If you want certain things to happen to all requests, you can use a middleware.
+This is implemented as a classmethod that receives and returns a view function:
+
+```python
+from djsonapi import Resource
+
+class Article(Resource):
+    @classmethod
+    def middleware(cls, get_response):
+        def view(request, *args, **kwargs):
+            logging.info(f"Article resource invoked with {request!r}, {args}, {kwargs}")
+            return get_response(request, *args, **kwargs)
+        return view
+
+    @classmethod
+    def get_one(cls, request, article_id):
+        ...
+```
+
+You can stack multiple middlewares like this:
+
+```python
+from djsonapi import Resource
+
+class ResourceBase1(Resource):
+    @classmethod
+    def middleware(cls, get_response):
+        get_response = super().middleware(get_response)
+        def view(request, *args, **kwargs):
+            ...
+            result = get_response(request, *args, **kwargs)
+            ...
+            return result
+        return view
+
+class ResourceBase2(ResourceBase1):
+    @classmethod
+    def middleware(cls, get_response):
+        get_response = super().middleware(get_response)
+        def view(request, *args, **kwargs):
+            ...
+            result = get_response(request, *args, **kwargs)
+            ...
+            return result
+        return view
+
+class Article(ResourceBase2):
+    @classmethod
+    def middleware(cls, get_response):
+        get_response = super().middleware(get_response)
+        def view(request, *args, **kwargs):
+            ...
+            result = get_response(request, *args, **kwargs)
+            ...
+            return result
+        return view
+
+    @classmethod
+    def get_one(cls, request, article_id):
+        ...
+```
+
+Or like this:
+
+```python
+from djsonapi import Resource
+
+class ResourceBase1(Resource):
+    @classmethod
+    def middleware(cls, get_response):
+        def view(request, *args, **kwargs):
+            ...
+            result = get_response(request, *args, **kwargs)
+            ...
+            return result
+        return super().middleware(view)
+
+class ResourceBase2(ResourceBase1):
+    @classmethod
+    def middleware(cls, get_response):
+        def view(request, *args, **kwargs):
+            ...
+            result = get_response(request, *args, **kwargs)
+            ...
+            return result
+        return super().middleware(view)
+
+class Article(ResourceBase2):
+    @classmethod
+    def middleware(cls, get_response):
+        def view(request, *args, **kwargs):
+            ...
+            result = get_response(request, *args, **kwargs)
+            ...
+            return result
+        return super().middleware(view)
+
+    @classmethod
+    def get_one(cls, request, article_id):
+        ...
+```
+
+In short:
+
+- Replace the `get_response` argument with `super().middleware(get_response)`
+  if you want your middleware to "wrap around" the previous middleware(s)
+
+- Return `super().middleware(view)` instead of `view` if you want the previous
+  middleware to "wrap around" your middleware
+
 ## Exceptions
 
 If you raise any exception from `djsonapi.exceptions`, which are subclassed
