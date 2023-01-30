@@ -152,9 +152,25 @@ class BadRequest(DjsonApiExceptionSingle):
     STATUS = 400
 
 
+class Unauthorized(DjsonApiExceptionSingle):
+    STATUS = 401
+
+
+class Forbidden(DjsonApiExceptionSingle):
+    STATUS = 403
+
+
 class NotFound(DjsonApiExceptionSingle):
     STATUS = 404
 
 
+class MethodNotAllowed(DjsonApiExceptionSingle):
+    STATUS = 405
+
+
 class Conflict(DjsonApiExceptionSingle):
     STATUS = 409
+
+
+class TooManyRequests(DjsonApiExceptionSingle):
+    STATUS = 429

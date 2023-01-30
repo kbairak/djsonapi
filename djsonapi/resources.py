@@ -1,8 +1,10 @@
 import logging
 import re
+import traceback
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 
+from django.conf import settings
 from django.db.transaction import atomic
 from django.http import HttpResponse, JsonResponse
 from django.urls import NoReverseMatch, path, reverse
@@ -25,6 +27,19 @@ def JsonApiResponse(*args, **kwargs):
     return result
 
 
+def handle_exception(exc):
+    if not isinstance(exc, DjsonApiException):
+        logger.exception(str(exc))
+        if settings.DEBUG:
+            exc = ServerError(
+                "You are seeing this because DEBUG is True\n"
+                + "\n".join(traceback.format_exception(exc))
+            )
+        else:
+            exc = ServerError()
+    return JsonApiResponse({"errors": exc.render()}, status=exc.status)
+
+
 class Resource:
     TYPE: str
 
@@ -43,15 +58,6 @@ class Resource:
     @classmethod
     def middleware(cls, get_response):
         return get_response
-
-    @classmethod
-    def exception_handler(cls, exc):
-        if isinstance(exc, DjsonApiException):
-            return JsonApiResponse({"errors": exc.render()}, status=exc.status)
-        else:
-            logger.exception(str(exc))
-            exc = ServerError()
-            return JsonApiResponse({"errors": exc.render()}, status=exc.status)
 
     @classmethod
     def as_views(cls):
@@ -133,7 +139,7 @@ class Resource:
         try:
             return cls.middleware(method)(request, obj_id)
         except Exception as exc:
-            return cls.exception_handler(exc)
+            return handle_exception(exc)
 
     @classmethod
     def _get_one_view(cls, request, obj_id):
@@ -179,7 +185,7 @@ class Resource:
         try:
             return cls.middleware(method)(request)
         except Exception as exc:
-            return cls.exception_handler(exc)
+            return handle_exception(exc)
 
     @classmethod
     def _create_one_view(cls, request):
@@ -234,7 +240,7 @@ class Resource:
         try:
             cls.middleware(method)(request, obj_id)
         except Exception as exc:
-            return cls.exception_handler(exc)
+            return handle_exception(exc)
         return HttpResponse("", status=204)
 
     @classmethod
@@ -255,7 +261,7 @@ class Resource:
                 if isinstance(result, HttpResponse):
                     return result
         except Exception as exc:
-            return cls.exception_handler(exc)
+            return handle_exception(exc)
         return HttpResponse("", status=204)
 
     @classmethod
@@ -269,7 +275,7 @@ class Resource:
             if isinstance(result, HttpResponse):
                 return result
         except Exception as exc:
-            return cls.exception_handler(exc)
+            return handle_exception(exc)
 
         if not isinstance(result, Mapping):
             result = {"data": result}

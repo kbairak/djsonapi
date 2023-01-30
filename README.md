@@ -755,32 +755,49 @@ if errors:
 As per {json:api} recommendations, the most generally applicable status code
 will be used for the response (_404 + 409 = 400_).
 
-### Custom exception handling
+### Handling {json:api} exceptions from other views
 
-Although we made `djsonapi` exceptions as easy as possible to invoke, you can
-extend the exception handling. For example, if you are working directly with
-the ORM and you don't care a lot about how informative your error messages are,
-you could do:
+If you have some server-side code that doesn't run within a `Resource`
+subclass, you can still take advantage of `djsonapi`'s exception handling by
+using `djsonapi.middleware.DjsonApiExceptionMiddleware`:
 
 ```python
-from django.core.exceptions import ObjectDoesNotExist
-from djsonapi.exceptions import NotFound
+# settings.py
+MIDDLEWARE = [
+    ...,
+    "djsonapi.middleware.DjsonApiExceptionMiddleware",
+]
 
-class Article(djsonapi.Resource):
-    @classmethod
-    def exception_handler(cls, exc):
-        if isinstance(exc, ObjectDoesNotExist):
-            exc = NotFound("Object not found")
-        return super().exception_handler(exc)
+# views.py
+from django.http import JsonResponse
+from djsonapi.exceptions import Unauthorized
 
-    @classmethod
-    def get_one(cls, request, obj_id):
-        return ArticleModel.objects.get(id=obj_id)
+def hello_view(request):
+    if not request.user.is_authenticated:
+        raise Unauthorized("You are not logged in")
+    return JsonResponse({"hello": "world"})
+
+# urls.py
+from django.urls import path
+from .views import hello_view
+
+urlpatterns = [path('', hello_view)]
 ```
 
-This way, you will not have to put your ORM lookup inside a try/catch statement
-to reraise Django's `DoesNotExist` exception as a
-`djsonapi.exceptions.NotFound` every time.
+```
+GET /
+
+# Successful response
+200 OK
+{"hello": "world"}
+
+# Unsuccessful response
+401 Unauthorized
+{"errors": [{"status": "401",
+             "code": "unauthorized",
+             "title": "Unauthorized",
+             "detail": "You are not logged in"}]}
+```
 
 ## Validation
 
