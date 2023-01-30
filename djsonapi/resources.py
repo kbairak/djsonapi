@@ -31,13 +31,14 @@ def handle_exception(exc):
     if not isinstance(exc, DjsonApiException):
         logger.exception(str(exc))
         if settings.DEBUG:
-            exc = ServerError(
-                "You are seeing this because DEBUG is True\n"
-                + "\n".join(traceback.format_exception(exc))
-            )
+            meta = {
+                "meta": ["You are seeing this because DEBUG is True\n"]
+                + traceback.format_exception(exc)
+            }
         else:
-            exc = ServerError()
-    return JsonApiResponse({"errors": exc.render()}, status=exc.status)
+            meta = {}
+        exc = ServerError()
+    return JsonApiResponse({"errors": exc.render(), **meta}, status=exc.status)
 
 
 class Resource:
