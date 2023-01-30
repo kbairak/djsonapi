@@ -14,7 +14,7 @@ from .exceptions import (
     BadRequest,
     DjsonApiException,
     DjsonApiExceptionMulti,
-    NotFound,
+    MethodNotAllowed,
     ServerError,
 )
 
@@ -473,7 +473,7 @@ class Resource:
 
     @classmethod
     def _raise_unsupported_verb_error(cls, request):
-        raise NotFound(
+        raise MethodNotAllowed(
             f"Endpoint '{request.path}' does not support method " f"{request.method}"
         )
 
