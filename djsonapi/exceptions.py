@@ -144,7 +144,7 @@ class DjsonApiExceptionMulti(DjsonApiException):
         return max(statuses)
 
 
-class ServerError(DjsonApiExceptionSingle):
+class InternalServerError(DjsonApiExceptionSingle):
     pass
 
 

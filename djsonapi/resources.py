@@ -14,8 +14,8 @@ from .exceptions import (
     BadRequest,
     DjsonApiException,
     DjsonApiExceptionMulti,
+    InternalServerError,
     MethodNotAllowed,
-    ServerError,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,18 +27,22 @@ def JsonApiResponse(*args, **kwargs):
     return result
 
 
-def handle_exception(exc):
-    if not isinstance(exc, DjsonApiException):
-        logger.exception(str(exc))
+def handle_exception(python_exc):
+    if isinstance(python_exc, DjsonApiException):
+        djsonapi_exc = python_exc
+        body = {"errors": djsonapi_exc.render()}
+    else:
+        djsonapi_exc = InternalServerError()
+        body = {"errors": djsonapi_exc.render()}
+        logger.exception(str(python_exc))
         if settings.DEBUG:
-            meta = {
-                "meta": ["You are seeing this because DEBUG is True\n"]
-                + traceback.format_exception(exc)
+            body["meta"] = {
+                "traceback": (
+                    ["You are seeing this because DEBUG is True\n"]
+                    + traceback.format_exception(python_exc)
+                )
             }
-        else:
-            meta = {}
-        exc = ServerError()
-    return JsonApiResponse({"errors": exc.render(), **meta}, status=exc.status)
+    return JsonApiResponse(body, status=djsonapi_exc.status)
 
 
 class Resource:
