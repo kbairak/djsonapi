@@ -491,7 +491,7 @@ pagination links:
 
 # 200 OK
 {..., "links": {"self": "/articles",
-                  "next": "/articles?page=2"}}
+                "next": "/articles?page=2"}}
 ```
 
 ```yaml
@@ -499,8 +499,8 @@ pagination links:
 
 # 200 OK
 {..., "links": {"previous": "/articles?page=1",
-                  "self":     "/articles?page=2",
-                  "next":     "/articles?page=3"}}
+                "self":     "/articles?page=2",
+                "next":     "/articles?page=3"}}
 ```
 
 This works like this: If the collection view's return value has a 'links' key
@@ -566,7 +566,7 @@ class InvalidToken(DjsonApiExceptionSingle):
     STATUS = 401
 ```
 
-The default 'code' and 'status' will be inferred from the class's name; in this
+The default 'code' and 'title' will be inferred from the class's name; in this
 case they will be `invalid_token` and `Invalid Token` respectively. However,
 you can override them yourself if you want to:
 
@@ -669,7 +669,7 @@ class ArticleResource(Resource):
 
         # pagination and included stay the same
 
-        return response
+        return queryset
 ```
 
 Now, in our `UserResource` serializer, we can do this:
@@ -830,6 +830,9 @@ class ArticleResource(Resource):
                 'included': [UserResource(author)]}
 ```
 
+> You are free to perform the actual saving in any way you want. `djsonapi` is only
+> concerned with postprocessing the return value
+
 ```yaml
 # POST /articles
 {"data": {"type": "articles",
@@ -866,7 +869,7 @@ class ArticleResource(Resource):
     @classmethod
     def edit_one(cls, request, article_id):
         try:
-            article = Article.objects.select_related.get(id=article_id)
+            article = Article.objects.select_related('author').get(id=article_id)
         except Article.DoesNotExist:
             raise NotFound(f"Article with id '{article_id}' not found")
         body = get_body(request)
@@ -876,6 +879,7 @@ class ArticleResource(Resource):
         if 'content' in attributes:
             article.content = attributes['content']
         article.save()
+        return {'data': article, 'included': [article.author]}
 ```
 
 ```yaml
@@ -884,7 +888,20 @@ class ArticleResource(Resource):
           "id": "1",
           "attributes": {"title": "New title", "content": "New content"}}}
 
-# 204 No Content
+# 200 OK
+# Location: /articles/4
+{"data": {"type": "articles",
+          "id": "1",
+          "attributes": {"title": "New title", "content": "New content"},
+          "relationships": {
+              "author": {"data": {"type": "users", "id": "1"},
+                         "links": {"related": "/articles/1/author"}}},
+          "links": {"self": "/articles/1"}},
+ "included": [{"type": "users",
+               "id": "1",
+               "attributes": {"username": "jsmith",
+                              "full_name": "John Smith"}}],
+ "links": {"self": "/articles/1"}}
 ```
 
 In order to have a view that deletes an item, you must do:
@@ -909,7 +926,7 @@ class ArticleResource(Resource):
 # 204 No Content
 ```
 
-> `edit_one` and `delete_one` are not supposed to return anything.
+> `delete_one` is not supposed to return anything.
 
 ### Modifying relationships
 
@@ -1050,7 +1067,7 @@ class ArticleResource(Resource):
 
         body = get_body(request)
         category_ids = [item['id'] for item in body['data']]
-        categories = Category.objects.fiter(id__in=category_ids)
+        categories = Category.objects.filter(id__in=category_ids)
         article.categories.add(*categories)
 ```
 
