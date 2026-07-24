@@ -484,5 +484,6 @@ Every endpoint gets a URL name for `reverse()` lookups:
 | `get_many` / `create_one` | `{type}__collection` |
 | `get_related` | `{type}__{rel}__related` |
 | `get_relationship` / `edit_relationship` / etc. | `{type}__{rel}__relationship` |
+| `rpc` | `{type}__rpc__{action}` |
 
 Used internally for link auto-discovery (see [URL Linking](url-linking.md)).

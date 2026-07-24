@@ -61,7 +61,7 @@ Returns a lazy `Collection` — see [Collections](collection.md).
     articles = sdk.articles.list()
     # No HTTP request yet
 
-    articles = await articles
+    await articles
     # GET /articles
     ```
 
@@ -256,6 +256,12 @@ Plural relationships return a `Collection` instead of a single resource.
     for (const cat of article.categories) {
         console.log(cat.name);
     }
+
+    // With include — pre-populated
+    const article2 = await sdk.articles.get(1, "categories");
+    for (const cat of article2.categories) {
+        console.log(cat.name);
+    }
     ```
 
 ### Mutating relationships
@@ -339,12 +345,12 @@ Available actions are typed as `Literal` — only valid names compile.
 rpc(action, payload=None, mimetype=None)
 ```
 
-| Param | Type | Behavior |
-|-------|------|----------|
-| `action` | `str` (typed as `Literal[...]` in generated code) | RPC action name |
-| `payload` | omitted / `None` | No request body |
-| `payload` | dict / list / scalar (no `mimetype`) | Sent as JSON, auto `Content-Type: application/json` |
-| `payload` | any value + `mimetype` set | Sent as raw body with explicit `Content-Type` header |
+| Param     | Type                                              | Behavior                                             |
+| --------- | ------------------------------------------------- | ---------------------------------------------------- |
+| `action`  | `str` (typed as `Literal[...]` in generated code) | RPC action name                                      |
+| `payload` | omitted / `None`                                  | No request body                                      |
+| `payload` | dict / list / scalar (no `mimetype`)              | Sent as JSON, auto `Content-Type: application/json`  |
+| `payload` | any value + `mimetype` set                        | Sent as raw body with explicit `Content-Type` header |
 
 ### Examples
 

@@ -191,8 +191,7 @@ Non-standard query parameters:
 === "TypeScript"
 
     ```typescript
-    const articles = sdk.articles.list();
-    await articles.fetch();
+    const articles = await sdk.articles.list().fetch();
     // GET /articles
 
     console.log(articles.at(0));  // first article
@@ -231,17 +230,17 @@ After fetch, navigate pages:
 === "TypeScript"
 
     ```typescript
-    const col = await sdk.articles.list().page(1);
+    const col = await sdk.articles.list().page(1).fetch();
 
-    if (col.has_next()) {
-        const nextPage = await col.get_next();
+    if (col.hasNext()) {
+        const nextPage = await col.getNext().fetch();
         for await (const article of nextPage) {
             console.log(article.title);
         }
     }
 
     // Iterate ALL pages
-    for await (const page of col.all_pages()) {
+    for await (const page of col.allPages()) {
         for await (const article of page) {
             console.log(article.title);
         }
@@ -288,30 +287,4 @@ pagination links (via `Response(links={...})`) for these to work.
     ```
     `Collection` implements `AsyncIterable<T>`. Iteration triggers fetch.
 
-## Immutability
 
-Collections are immutable. Every chainable method returns a new instance — the
-original is never modified. This lets you build queries conditionally without
-side effects, similar to Django's `QuerySet`:
-
-=== "Python"
-
-    ```python
-    base = sdk.articles.list()
-    filtered = base.filter(title__contains="json")
-    sorted = filtered.sort("-created_at")
-
-    # base and filtered are untouched
-    assert base._params == {}
-    assert filtered._params == {"filter[title][contains]": "json"}
-    ```
-
-=== "TypeScript"
-
-    ```typescript
-    const base = sdk.articles.list();
-    const filtered = base.filter({ title__contains: "json" });
-    const sorted = filtered.sort("-created_at");
-
-    // base._params is unchanged
-    ```
