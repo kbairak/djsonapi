@@ -189,10 +189,10 @@ def _collect(api: DjsonApi) -> dict[str, _TypeSpec]:
     for spec in specs.values():
         cls = spec.resource_class
         if cls is not None:
-            for field, target in cls._singular_relationships:
+            for field, target in cls._singular_rels:
                 spec_for(target, None)
                 spec.rel_targets.setdefault(field, (target, False))
-            for field, target in cls._plural_relationships:
+            for field, target in cls._plural_rels:
                 spec_for(target, None)
                 spec.rel_targets.setdefault(field, (target, True))
 
@@ -242,8 +242,8 @@ def _render_resource_class(
     body.append("}")
 
     rel_types = [
-        *(f'"{field}": ("{target}", False),' for field, target in cls._singular_relationships),
-        *(f'"{field}": ("{target}", True),' for field, target in cls._plural_relationships),
+        *(f'"{field}": ("{target}", False),' for field, target in cls._singular_rels),
+        *(f'"{field}": ("{target}", True),' for field, target in cls._plural_rels),
     ]
     if rel_types:
         body.append("_relationship_types: ClassVar[dict[str, tuple[str, bool]]] = {")
@@ -349,8 +349,8 @@ def _render_resource_class(
         ]
 
     if "create" in spec.capabilities:
-        singular_rels = dict(cls._singular_relationships)
-        plural_rels = dict(cls._plural_relationships)
+        singular_rels = dict(cls._singular_rels)
+        plural_rels = dict(cls._plural_rels)
         required, optional = [], []
         for f in cls._create_fields:
             annotation = annotations.get(f, Any)
@@ -477,9 +477,9 @@ def _sparse_literal(
     cls = target.resource_class
     field_names: list[str] = ["id"] if "id" in cls.__annotations__ else []
     field_names.extend(cls._attributes)
-    for f, _ in cls._singular_relationships:
+    for f, _ in cls._singular_rels:
         field_names.append(f)
-    for f, _ in cls._plural_relationships:
+    for f, _ in cls._plural_rels:
         field_names.append(f)
     if not field_names:
         return None
@@ -495,9 +495,9 @@ def _ts_sparse_fieldset(type_name: str, specs: dict[str, _TypeSpec]) -> str | No
     cls = target.resource_class
     field_names: list[str] = ["id"] if "id" in cls.__annotations__ else []
     field_names.extend(cls._attributes)
-    for f, _ in cls._singular_relationships:
+    for f, _ in cls._singular_rels:
         field_names.append(f)
-    for f, _ in cls._plural_relationships:
+    for f, _ in cls._plural_rels:
         field_names.append(f)
     if not field_names:
         return None
@@ -531,8 +531,8 @@ def _render_resources(specs: dict[str, _TypeSpec]) -> str:
         if "edit" in spec.capabilities:
             cls = spec.resource_class
             annotations = cls._annotations()
-            singular_rels = dict(cls._singular_relationships)
-            plural_rels = dict(cls._plural_relationships)
+            singular_rels = dict(cls._singular_rels)
+            plural_rels = dict(cls._plural_rels)
             edit_entries = []
             for f in spec.resource_class._edit_fields:
                 if f in singular_rels and singular_rels[f] in specs:
@@ -820,7 +820,7 @@ def _render_ts_resource_class(
         body.append(f"    {key!r}: {renderer.render(tp)!r},")
     body.append("  };")
 
-    rel_entries = list(cls._singular_relationships) + list(cls._plural_relationships)
+    rel_entries = list(cls._singular_rels) + list(cls._plural_rels)
     if rel_entries:
         body.append("  static _relationshipTypes: Record<string, [string, boolean]> = {")
         for field, target in sorted(spec.rel_targets.items()):
@@ -990,8 +990,8 @@ def _render_ts_resources(specs: dict[str, _TypeSpec]) -> str:
         if "edit" in spec.capabilities:
             cls = spec.resource_class
             annotations = cls._annotations()
-            singular_rels = dict(cls._singular_relationships)
-            plural_rels = dict(cls._plural_relationships)
+            singular_rels = dict(cls._singular_rels)
+            plural_rels = dict(cls._plural_rels)
             edit_entries: list[tuple[str, str]] = []
             for f in cls._edit_fields:
                 if f in singular_rels and singular_rels[f] in specs:
@@ -1011,8 +1011,8 @@ def _render_ts_resources(specs: dict[str, _TypeSpec]) -> str:
         if "create" in spec.capabilities:
             cls = spec.resource_class
             annotations = cls._annotations()
-            singular_rels = dict(cls._singular_relationships)
-            plural_rels = dict(cls._plural_relationships)
+            singular_rels = dict(cls._singular_rels)
+            plural_rels = dict(cls._plural_rels)
             create_entries: list[tuple[str, str]] = []
             for f in cls._create_fields:
                 annotation = annotations.get(f, Any)

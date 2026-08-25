@@ -3,6 +3,7 @@ site_description: JSON:API framework for Django
 repo_url: https://github.com/kbairak/djsonapi
 theme:
   name: material
+  custom_dir: docs/overrides
   features:
     - content.code.annotate
     - content.code.copy

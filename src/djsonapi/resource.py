@@ -1,5 +1,6 @@
 import datetime
 import uuid
+from collections.abc import Sequence
 from dataclasses import MISSING as DC_MISSING
 from dataclasses import dataclass
 from dataclasses import fields as dc_fields
@@ -8,7 +9,6 @@ from typing import (
     Any,
     ClassVar,
     Literal,
-    Sequence,
     cast,
     dataclass_transform,
     get_args,
@@ -74,8 +74,11 @@ class Resource:
     meta: dict | None = None
     _type: ClassVar[str] = ""
     _attributes: ClassVar[list[str]] = []
-    _singular_relationships: ClassVar[list | dict] = []
-    _plural_relationships: ClassVar[list | dict] = []
+    _singular_relationships: ClassVar[Sequence[str | tuple[str, str]] | dict[str, str]] = []
+    _plural_relationships: ClassVar[Sequence[str | tuple[str, str]] | dict[str, str]] = []
+    # Normalized by __init_subclass__ into list[tuple[str, str]]
+    _singular_rels: ClassVar[list[tuple[str, str]]] = []
+    _plural_rels: ClassVar[list[tuple[str, str]]] = []
     _create_fields: ClassVar[list[str]] = []
     _required_create_fields: ClassVar[list[str]] = []
     _edit_fields: ClassVar[list[str]] = []
@@ -110,8 +113,8 @@ class Resource:
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         dataclass(cls)
-        cls._singular_relationships = cls._normalize_relationships(cls._singular_relationships)
-        cls._plural_relationships = cls._normalize_relationships(cls._plural_relationships)
+        cls._singular_rels = cls._normalize_relationships(cls._singular_relationships)
+        cls._plural_rels = cls._normalize_relationships(cls._plural_relationships)
 
     @classmethod
     def _annotations(cls) -> dict[str, type]:
@@ -138,9 +141,7 @@ class Resource:
 
     @classmethod
     def _rel_names(cls) -> set[str]:
-        return {f for f, _ in cls._singular_relationships} | {
-            f for f, _ in cls._plural_relationships
-        }
+        return {f for f, _ in cls._singular_rels} | {f for f, _ in cls._plural_rels}
 
     @staticmethod
     def _rel_schema_singular(type_name: str) -> dict:
@@ -186,10 +187,10 @@ class Resource:
     @classmethod
     def _relationship_properties(cls, fields: set[str]) -> dict[str, dict]:
         rel_props: dict[str, dict] = {}
-        for field, type_name in cls._singular_relationships:
+        for field, type_name in cls._singular_rels:
             if field in fields:
                 rel_props[field] = cls._rel_schema_singular(type_name)
-        for field, type_name in cls._plural_relationships:
+        for field, type_name in cls._plural_rels:
             if field in fields:
                 rel_props[field] = cls._rel_schema_plural(type_name)
         return rel_props
@@ -239,8 +240,8 @@ class Resource:
             properties["relationships"] = {
                 "type": "object",
                 "properties": rel_props,
-                "required": [f for f, _ in cls._singular_relationships if f in read_rel_names]
-                + [f for f, _ in cls._plural_relationships if f in read_rel_names],
+                "required": [f for f, _ in cls._singular_rels if f in read_rel_names]
+                + [f for f, _ in cls._plural_rels if f in read_rel_names],
                 "additionalProperties": False,
             }
             required.append("relationships")
@@ -380,7 +381,7 @@ class Resource:
             elif field in cls._attributes:
                 setattr(instance, field, UNSET)
             elif field in cls._rel_names():
-                if field in dict(cls._plural_relationships):
+                if field in dict(cls._plural_rels):
                     setattr(instance, field, [])
                 else:
                     setattr(instance, field, UNSET)
@@ -430,7 +431,7 @@ class Resource:
             value = getattr(self, field, UNSET)
             if value is not UNSET:
                 result.setdefault("attributes", {})[field] = self._serialize_value(value)
-        for field, type_name in self._singular_relationships:
+        for field, type_name in self._singular_rels:
             if read_fields and field not in read_fields:
                 continue
             value = getattr(self, field, UNSET)
@@ -439,7 +440,7 @@ class Resource:
                 if value is not None:
                     rel["data"] = {"type": type_name, "id": str(value)}
                 result.setdefault("relationships", {})[field] = rel
-        for field, type_name in self._plural_relationships:
+        for field, type_name in self._plural_rels:
             if read_fields and field not in read_fields:
                 continue
             value = getattr(self, field, UNSET)

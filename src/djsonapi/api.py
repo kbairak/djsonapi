@@ -183,16 +183,16 @@ def _sparse_field_names(resource_class: type[Resource] | None) -> list[str]:
     names: list[str] = []
     if resource_class._attributes:
         names.extend(resource_class._attributes)
-    if resource_class._singular_relationships:
-        names.extend(f for f, _ in resource_class._singular_relationships)
-    if resource_class._plural_relationships:
-        names.extend(f for f, _ in resource_class._plural_relationships)
+    if resource_class._singular_rels:
+        names.extend(f for f, _ in resource_class._singular_rels)
+    if resource_class._plural_rels:
+        names.extend(f for f, _ in resource_class._plural_rels)
     return names
 
 
 def _add_links_to_schema(schema: dict, resource_class: type[Resource]) -> None:
     rel_props = schema.get("properties", {}).get("relationships", {}).get("properties", {})
-    for rel_field, _ in resource_class._singular_relationships:
+    for rel_field, _ in resource_class._singular_rels:
         if rel_field in rel_props:
             rel_props[rel_field]["properties"] = rel_props[rel_field].get("properties", {})
             rel_props[rel_field]["properties"]["links"] = {
@@ -202,7 +202,7 @@ def _add_links_to_schema(schema: dict, resource_class: type[Resource]) -> None:
                     "self": {"type": "string", "format": "uri"},
                 },
             }
-    for rel_field, _ in resource_class._plural_relationships:
+    for rel_field, _ in resource_class._plural_rels:
         if rel_field in rel_props:
             rel_props[rel_field]["properties"] = rel_props[rel_field].get("properties", {})
             rel_props[rel_field]["properties"]["links"] = {
@@ -472,10 +472,15 @@ class ExpectsIdMixin(Endpoint):
         if self.pk_name not in url_kwargs:
             return kwargs, errors
         raw = url_kwargs[self.pk_name]
-        try:
-            pk_value = self.pk_type(raw)
-        except Exception:
-            raise NotFound("The URL does not exist")
+        if isinstance(raw, self.pk_type):
+            pk_value = raw
+        else:
+            try:
+                pk_value = self.pk_type(raw)
+            except Exception:
+                raise NotFound("The URL does not exist")
+        kwargs[self.pk_name] = pk_value
+        return kwargs, errors
         kwargs[self.pk_name] = pk_value
         return kwargs, errors
 
@@ -639,15 +644,15 @@ class ReturnsDataMixin(Endpoint):
         if self.return_resource_type is not None:
             result[self.return_resource_type._type] = {
                 *self.return_resource_type._attributes,
-                *[_type for _, _type in self.return_resource_type._singular_relationships],
-                *[_type for _, _type in self.return_resource_type._plural_relationships],
+                *[_type for _, _type in self.return_resource_type._singular_rels],
+                *[_type for _, _type in self.return_resource_type._plural_rels],
             }
 
         for include_type in self.include_types:
             result[include_type._type] = {
                 *include_type._attributes,
-                *[_type for _, _type in include_type._singular_relationships],
-                *[_type for _, _type in include_type._plural_relationships],
+                *[_type for _, _type in include_type._singular_rels],
+                *[_type for _, _type in include_type._plural_rels],
             }
 
         return result
@@ -666,8 +671,8 @@ class ReturnsDataMixin(Endpoint):
         if self.return_resource_type is None:
             return set()
         return {
-            *[rel for rel, _ in self.return_resource_type._singular_relationships],
-            *[rel for rel, _ in self.return_resource_type._plural_relationships],
+            *[rel for rel, _ in self.return_resource_type._singular_rels],
+            *[rel for rel, _ in self.return_resource_type._plural_rels],
         }
 
     def _get_kwargs(
@@ -1101,10 +1106,13 @@ class RpcEndpoint(ExpectsIdMixin, Endpoint):
 
         if self.pk_name in url_kwargs:
             raw = url_kwargs[self.pk_name]
-            try:
-                pk_value = self.pk_type(raw)
-            except Exception:
-                raise NotFound("The URL does not exist")
+            if isinstance(raw, self.pk_type):
+                pk_value = raw
+            else:
+                try:
+                    pk_value = self.pk_type(raw)
+                except Exception:
+                    raise NotFound("The URL does not exist")
             kwargs[self.pk_name] = pk_value
 
         if request.body:
@@ -1398,8 +1406,11 @@ class DjsonApi:
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         def decorator(handler: Callable[..., Any]) -> Endpoint:
             endpoint = RpcEndpoint(
-                type_name, handler, action_name=action,
-                path_operation=path_operation, method=method,
+                type_name,
+                handler,
+                action_name=action,
+                path_operation=path_operation,
+                method=method,
             )
             self.registry.append(endpoint)
             return endpoint
@@ -1525,7 +1536,7 @@ class DjsonApi:
             op = endpoint._openapi_operation()
             op["tags"] = [type_name]
             op["summary"] = summary
-            method = (getattr(endpoint, 'method', None) or endpoint.METHOD).lower()
+            method = (getattr(endpoint, "method", None) or endpoint.METHOD).lower()
 
             if "responses" not in op:
                 op["responses"] = {
@@ -1587,7 +1598,7 @@ class DjsonApi:
 
     def combine_views(self, endpoints: list[Endpoint]) -> Callable[..., Any]:
         by_method: dict[str, Endpoint] = {
-            getattr(endpoint, 'method', None) or endpoint.METHOD: endpoint
+            getattr(endpoint, "method", None) or endpoint.METHOD: endpoint
             for endpoint in endpoints
         }
 

@@ -98,7 +98,7 @@ export class DjsonApiSdk {
     return body
   }
 
-  private _raiseForStatus(status: number, body: Record<string, unknown>): void {
+  _raiseForStatus(status: number, body: Record<string, unknown>): void {
     if (status < 400) return
     const errors = (body as Record<string, unknown>).errors
     if (Array.isArray(errors)) {
