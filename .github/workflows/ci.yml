@@ -38,15 +38,23 @@ jobs:
 
   test-python:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+        django-version: ["4.1", "5.1", "6.0"]
+        exclude:
+          - python-version: "3.14"
+            django-version: "4.1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python-version }}
       - uses: astral-sh/setup-uv@v7
         with:
           version: ${{ env.UV_VERSION }}
       - run: uv sync --frozen
+      - run: uv run pip install "django==${{ matrix.django-version }}"
       - run: uv run pytest tests/
 
   test-ts:

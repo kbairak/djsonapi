@@ -184,8 +184,8 @@ Every method, every filter, every field — generated SDKs are fully typed.
 
 ## Requirements
 
-- Python ≥ 3.13
-- Django ≥ 4.2
+- Python ≥ 3.12
+- Django ≥ 4.1
 - aiohttp ≥ 3.14 (client only)
 - jsonschema ≥ 4.20
 
