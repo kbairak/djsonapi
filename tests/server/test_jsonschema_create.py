@@ -438,3 +438,31 @@ def test_create_only_relationships_no_attributes():
         "required": ["type"],
         "additionalProperties": False,
     }
+
+
+def test_required_create_fields_implies_create_fields():
+    class Article(Resource):
+        _type: ClassVar = "articles"
+        _attributes: ClassVar = ["title", "content"]
+        _required_create_fields: ClassVar = ["title"]
+
+        id: uuid.UUID
+        title: str
+        content: str
+
+    assert Article.jsonschema_create() == {
+        "type": "object",
+        "properties": {
+            "type": {"const": "articles"},
+            "attributes": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                },
+                "required": ["title"],
+                "additionalProperties": False,
+            },
+        },
+        "required": ["type", "attributes"],
+        "additionalProperties": False,
+    }

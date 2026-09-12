@@ -115,6 +115,8 @@ class Resource:
         dataclass(cls)
         cls._singular_rels = cls._normalize_relationships(cls._singular_relationships)
         cls._plural_rels = cls._normalize_relationships(cls._plural_relationships)
+        if "_required_create_fields" in cls.__dict__ and "_create_fields" not in cls.__dict__:
+            cls._create_fields = list(cls._required_create_fields)
 
     @classmethod
     def _annotations(cls) -> dict[str, type]:
@@ -436,9 +438,11 @@ class Resource:
                 continue
             value = getattr(self, field, UNSET)
             if value is not UNSET:
-                rel = {}
+                rel: dict = {}
                 if value is not None:
                     rel["data"] = {"type": type_name, "id": str(value)}
+                else:
+                    rel["data"] = None
                 result.setdefault("relationships", {})[field] = rel
         for field, type_name in self._plural_rels:
             if read_fields and field not in read_fields:
