@@ -45,6 +45,7 @@ nav:
     - URL Linking: server/url-linking.md
     - Validation & Schemas: server/validation.md
     - Errors: server/errors.md
+    - Middleware: server/middleware.md
     - OpenAPI & Redoc: server/openapi.md
   - SDK:
     - Overview: sdk/index.md

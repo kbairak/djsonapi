@@ -52,6 +52,9 @@ The djsonapi decorator registers the inner function (including its wrappers)
 as an endpoint. When a request comes in, `login_required` runs first, then
 the handler.
 
+For cross-cutting concerns beyond simple decorators (auth, logging,
+timing), see [Middleware](middleware.md).
+
 ### Async handlers
 
 Handlers work with both `def` and `async def`:
@@ -321,6 +324,7 @@ def reset_categories(request, article_id: int, category_ids: list[int]) -> None:
 | `errors` | `Sequence[type[DjsonApiExceptionSingle]]` | `None` | Exception types → OpenAPI error responses |
 | `sparse` | `bool` | `True` | Enable/disable sparse field support |
 | `include_types` | `Sequence[type[Resource]]` | `[]` | Valid include target types |
+| `middleware` | `list[Callable]` | `None` | Decorators to wrap handler (overrides API-level list; `[]` skips) |
 
 ### `errors`
 

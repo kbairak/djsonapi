@@ -12,6 +12,8 @@ djsonapi gives you:
   type annotations drive everything
 - **FastAPI-style decorators** — JSON:API-aware, auto-validate, auto-parse query
   params, generate OpenAPI
+- **Middleware** — auth, logging, and other cross-cutting concerns, see
+  [Middleware](server/middleware.md)
 - **Free OpenAPI 3.0.3 + Redoc docs** — at `/api/openapi.json` and `/api/docs/`
 - **Python & TypeScript SDKs** — generated from your API, sealed types, IDE
   autocomplete

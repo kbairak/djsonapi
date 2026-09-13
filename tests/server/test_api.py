@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import json
 from typing import ClassVar
 
@@ -810,7 +811,114 @@ class TestDjsonApiRegistry:
         assert len(api.registry) == 1
 
 
-class TestDjsonApiUrls:
+class TestDjsonApiRegistryMiddleware:
+    @staticmethod
+    def _make_log_middleware(log):
+        def middleware(func):
+            @functools.wraps(func)
+            def wrapped(request, *args, **kwargs):
+                log.append("mw_before")
+                result = func(request, *args, **kwargs)
+                log.append("mw_after")
+                return result
+            return wrapped
+        return middleware
+
+    def test_api_level_middleware_wraps_handler(self):
+        from djsonapi.api import DjsonApi
+
+        log = []
+        mw = self._make_log_middleware(log)
+        api = DjsonApi(middleware=[mw])
+
+        @api.rpc("articles", "publish")
+        def view(request, article_id): ...
+
+        asyncio.run(api.registry[0].view(RequestFactory().get("/"), article_id="1"))
+        assert log == ["mw_before", "mw_after"]
+
+    def test_endpoint_middleware_overrides_api_middleware(self):
+        from djsonapi.api import DjsonApi
+
+        log = []
+        api_mw = self._make_log_middleware(log)
+        ep_mw = self._make_log_middleware(log)
+        api = DjsonApi(middleware=[api_mw])
+
+        @api.rpc("articles", "publish", middleware=[ep_mw])
+        def view(request, article_id): ...
+
+        asyncio.run(api.registry[0].view(RequestFactory().get("/"), article_id="1"))
+        assert log.count("mw_before") == 1  # only ep_mw ran, not api_mw
+
+    def test_endpoint_middleware_empty_skips_api_middleware(self):
+        from djsonapi.api import DjsonApi
+
+        log = []
+        api_mw = self._make_log_middleware(log)
+        api = DjsonApi(middleware=[api_mw])
+
+        @api.rpc("articles", "publish", middleware=[])
+        def view(request, article_id): ...
+
+        asyncio.run(api.registry[0].view(RequestFactory().get("/"), article_id="1"))
+        assert log == []  # no middleware ran
+
+    def test_endpoint_omits_middleware_inherits_api(self):
+        from djsonapi.api import DjsonApi
+
+        log = []
+        mw = self._make_log_middleware(log)
+        api = DjsonApi(middleware=[mw])
+
+        @api.rpc("articles", "publish")
+        def view(request, article_id): ...
+
+        asyncio.run(api.registry[0].view(RequestFactory().get("/"), article_id="1"))
+        assert log == ["mw_before", "mw_after"]
+
+    def test_middleware_order_innermost_first_in_list(self):
+        from djsonapi.api import DjsonApi
+
+        order = []
+        def mw_a(func):
+            @functools.wraps(func)
+            def wrapped(request, *args, **kwargs):
+                order.append("a")
+                return func(request, *args, **kwargs)
+            return wrapped
+        def mw_b(func):
+            @functools.wraps(func)
+            def wrapped(request, *args, **kwargs):
+                order.append("b")
+                return func(request, *args, **kwargs)
+            return wrapped
+
+        api = DjsonApi(middleware=[mw_a, mw_b])
+
+        @api.rpc("articles", "publish")
+        def view(request, article_id): ...
+
+        asyncio.run(api.registry[0].view(RequestFactory().get("/"), article_id="1"))
+        assert order == ["a", "b"]  # first in list is outermost, runs first
+
+    def test_middleware_may_raise_djsonapi_exception(self):
+        from djsonapi.api import DjsonApi
+        from djsonapi.exceptions import Unauthorized
+
+        def auth_required(func):
+            @functools.wraps(func)
+            def wrapped(request, *args, **kwargs):
+                raise Unauthorized("no token")
+            return wrapped
+
+        api = DjsonApi(middleware=[auth_required])
+
+        @api.rpc("articles", "publish")
+        def view(request, article_id): ...
+
+        with pytest.raises(Unauthorized):
+            asyncio.run(api.registry[0].view(RequestFactory().get("/"), article_id="1"))
     def test_urls_includes_all_registered_endpoints(self):
         from djsonapi.api import DjsonApi
 

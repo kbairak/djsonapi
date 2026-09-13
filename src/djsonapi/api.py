@@ -1207,7 +1207,16 @@ def _jsonapi_response(*args, **kwargs) -> JsonResponse:
 
 @dataclass
 class DjsonApi:
+    middleware: list[Callable[..., Any]] = field(default_factory=list)
     registry: list[Endpoint] = field(default_factory=list)
+
+    def _apply_middleware(
+        self, handler: Callable[..., Any], middleware_list: list[Callable[..., Any]]
+    ) -> Callable[..., Any]:
+        result = handler
+        for mw in reversed(middleware_list):
+            result = mw(result)
+        return result
 
     def get_one(
         self,
@@ -1215,13 +1224,16 @@ class DjsonApi:
         errors: Sequence[type[DjsonApiExceptionSingle]] | None = None,
         sparse: bool = True,
         include_types: Sequence[type[Resource]] | None = None,
+        middleware: list[Callable[..., Any]] | None = None,
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         if include_types is None:
             include_types = []
 
         def decorator(handler: Callable[..., Any]) -> Endpoint:
+            effective = middleware if middleware is not None else self.middleware
+            wrapped = self._apply_middleware(handler, effective)
             endpoint = GetOneEndpoint(
-                type_name, handler, errors, sparse=sparse, include_types=include_types
+                type_name, wrapped, errors, sparse=sparse, include_types=include_types
             )
             self.registry.append(endpoint)
             return endpoint
@@ -1234,13 +1246,16 @@ class DjsonApi:
         errors: Sequence[type[DjsonApiExceptionSingle]] | None = None,
         sparse: bool = True,
         include_types: Sequence[type[Resource]] | None = None,
+        middleware: list[Callable[..., Any]] | None = None,
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         if include_types is None:
             include_types = []
 
         def decorator(handler: Callable[..., Any]) -> Endpoint:
+            effective = middleware if middleware is not None else self.middleware
+            wrapped = self._apply_middleware(handler, effective)
             endpoint = GetManyEndpoint(
-                type_name, handler, errors, sparse=sparse, include_types=include_types
+                type_name, wrapped, errors, sparse=sparse, include_types=include_types
             )
             self.registry.append(endpoint)
             return endpoint
@@ -1253,13 +1268,16 @@ class DjsonApi:
         errors: Sequence[type[DjsonApiExceptionSingle]] | None = None,
         sparse: bool = True,
         include_types: Sequence[type[Resource]] | None = None,
+        middleware: list[Callable[..., Any]] | None = None,
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         if include_types is None:
             include_types = []
 
         def decorator(handler: Callable[..., Any]) -> Endpoint:
+            effective = middleware if middleware is not None else self.middleware
+            wrapped = self._apply_middleware(handler, effective)
             endpoint = CreateOneEndpoint(
-                type_name, handler, errors, sparse=sparse, include_types=include_types
+                type_name, wrapped, errors, sparse=sparse, include_types=include_types
             )
             self.registry.append(endpoint)
             return endpoint
@@ -1272,13 +1290,16 @@ class DjsonApi:
         errors: Sequence[type[DjsonApiExceptionSingle]] | None = None,
         sparse: bool = True,
         include_types: Sequence[type[Resource]] | None = None,
+        middleware: list[Callable[..., Any]] | None = None,
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         if include_types is None:
             include_types = []
 
         def decorator(handler: Callable[..., Any]) -> Endpoint:
+            effective = middleware if middleware is not None else self.middleware
+            wrapped = self._apply_middleware(handler, effective)
             endpoint = EditOneEndpoint(
-                type_name, handler, errors, sparse=sparse, include_types=include_types
+                type_name, wrapped, errors, sparse=sparse, include_types=include_types
             )
             self.registry.append(endpoint)
             return endpoint
@@ -1289,9 +1310,12 @@ class DjsonApi:
         self,
         type_name: str,
         errors: Sequence[type[DjsonApiExceptionSingle]] | None = None,
+        middleware: list[Callable[..., Any]] | None = None,
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         def decorator(handler: Callable[..., Any]) -> Endpoint:
-            endpoint = DeleteOneEndpoint(type_name, handler, errors)
+            effective = middleware if middleware is not None else self.middleware
+            wrapped = self._apply_middleware(handler, effective)
+            endpoint = DeleteOneEndpoint(type_name, wrapped, errors)
             self.registry.append(endpoint)
             return endpoint
 
@@ -1304,14 +1328,17 @@ class DjsonApi:
         errors: Sequence[type[DjsonApiExceptionSingle]] | None = None,
         sparse: bool = True,
         include_types: Sequence[type[Resource]] | None = None,
+        middleware: list[Callable[..., Any]] | None = None,
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         if include_types is None:
             include_types = []
 
         def decorator(handler: Callable[..., Any]) -> Endpoint:
+            effective = middleware if middleware is not None else self.middleware
+            wrapped = self._apply_middleware(handler, effective)
             endpoint = GetRelatedEndpoint(
                 type_name,
-                handler,
+                wrapped,
                 errors,
                 relationship_name=relationship_name,
                 sparse=sparse,
@@ -1327,10 +1354,13 @@ class DjsonApi:
         type_name: str,
         relationship_name: str,
         errors: Sequence[type[DjsonApiExceptionSingle]] | None = None,
+        middleware: list[Callable[..., Any]] | None = None,
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         def decorator(handler: Callable[..., Any]) -> Endpoint:
+            effective = middleware if middleware is not None else self.middleware
+            wrapped = self._apply_middleware(handler, effective)
             endpoint = GetRelationshipEndpoint(
-                type_name, handler, errors, relationship_name=relationship_name
+                type_name, wrapped, errors, relationship_name=relationship_name
             )
             self.registry.append(endpoint)
             return endpoint
@@ -1342,10 +1372,13 @@ class DjsonApi:
         type_name: str,
         relationship_name: str,
         errors: Sequence[type[DjsonApiExceptionSingle]] | None = None,
+        middleware: list[Callable[..., Any]] | None = None,
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         def decorator(handler: Callable[..., Any]) -> Endpoint:
+            effective = middleware if middleware is not None else self.middleware
+            wrapped = self._apply_middleware(handler, effective)
             endpoint = EditRelationshipEndpoint(
-                type_name, handler, errors, relationship_name=relationship_name
+                type_name, wrapped, errors, relationship_name=relationship_name
             )
             self.registry.append(endpoint)
             return endpoint
@@ -1357,10 +1390,13 @@ class DjsonApi:
         type_name: str,
         relationship_name: str,
         errors: Sequence[type[DjsonApiExceptionSingle]] | None = None,
+        middleware: list[Callable[..., Any]] | None = None,
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         def decorator(handler: Callable[..., Any]) -> Endpoint:
+            effective = middleware if middleware is not None else self.middleware
+            wrapped = self._apply_middleware(handler, effective)
             endpoint = ResetRelationshipEndpoint(
-                type_name, handler, errors, relationship_name=relationship_name
+                type_name, wrapped, errors, relationship_name=relationship_name
             )
             self.registry.append(endpoint)
             return endpoint
@@ -1372,10 +1408,13 @@ class DjsonApi:
         type_name: str,
         relationship_name: str,
         errors: Sequence[type[DjsonApiExceptionSingle]] | None = None,
+        middleware: list[Callable[..., Any]] | None = None,
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         def decorator(handler: Callable[..., Any]) -> Endpoint:
+            effective = middleware if middleware is not None else self.middleware
+            wrapped = self._apply_middleware(handler, effective)
             endpoint = AddToRelationshipEndpoint(
-                type_name, handler, errors, relationship_name=relationship_name
+                type_name, wrapped, errors, relationship_name=relationship_name
             )
             self.registry.append(endpoint)
             return endpoint
@@ -1387,10 +1426,13 @@ class DjsonApi:
         type_name: str,
         relationship_name: str,
         errors: Sequence[type[DjsonApiExceptionSingle]] | None = None,
+        middleware: list[Callable[..., Any]] | None = None,
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         def decorator(handler: Callable[..., Any]) -> Endpoint:
+            effective = middleware if middleware is not None else self.middleware
+            wrapped = self._apply_middleware(handler, effective)
             endpoint = RemoveFromRelationshipEndpoint(
-                type_name, handler, errors, relationship_name=relationship_name
+                type_name, wrapped, errors, relationship_name=relationship_name
             )
             self.registry.append(endpoint)
             return endpoint
@@ -1403,11 +1445,14 @@ class DjsonApi:
         action: str,
         path_operation: dict | None = None,
         method: str = "POST",
+        middleware: list[Callable[..., Any]] | None = None,
     ) -> Callable[[Callable[..., Any]], Endpoint]:
         def decorator(handler: Callable[..., Any]) -> Endpoint:
+            effective = middleware if middleware is not None else self.middleware
+            wrapped = self._apply_middleware(handler, effective)
             endpoint = RpcEndpoint(
                 type_name,
-                handler,
+                wrapped,
                 action_name=action,
                 path_operation=path_operation,
                 method=method,
